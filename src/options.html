@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Google Tasks Plus Options</title>
+<link rel="stylesheet" type="text/css" href="print.css" media="print">
+<link rel="stylesheet" type="text/css" href="reset.css" media="screen">
+<link rel="stylesheet" type="text/css" href="style.css" media="screen">
+<script type="text/javascript" src="jquery-1.4.2.min.js"></script>
+<script type="text/javascript" src="backlog.js"></script>
+<script type="text/javascript" src="main.js"></script>
+<script>
+function restoreOptions() {
+
+  var saved = true;
+  
+  $.each(['space', 'username', 'password'], function(){
+    var value = localStorage.getItem('org.7kai.chrome.backlog.' + this);
+    if (value != null) {
+       $('input[name=' + this + ']').val(value);
+    } else {
+      saved = false;
+    }
+  });
+  
+  if (saved == true) {
+    
+    showTargetOptionsArea();
+    
+    var interval_sec = localStorage.getItem('org.7kai.chrome.backlog.interval_sec');
+    
+    $('input[name=interval_sec]').val(interval_sec);
+    
+    var due = localStorage.getItem('org.7kai.chrome.backlog.due');
+    
+    $('input[name=due]').val([due]);
+    
+    var status = localStorage.getItem('org.7kai.chrome.backlog.status');
+    if (status != null) {
+      $('input[name=status]').val(status.split(':'));
+    }
+    
+    var project = localStorage.getItem('org.7kai.chrome.backlog.project');
+    if (project != null) {
+      $('input[name=project]').val(project.split(':'));
+    }
+    
+    var assigner = localStorage.getItem('org.7kai.chrome.backlog.assigner');
+    if (assigner != null) {
+      $('input[name=assigner]').val(assigner.split(':'));
+    }
+  }
+}
+function saveGeneralOptions() {
+  
+  $('#saveGeneralComplete').show();
+  
+  localStorage.setItem('org.7kai.chrome.backlog.space', $('input[name=space]').val());
+  localStorage.setItem('org.7kai.chrome.backlog.username', $('input[name=username]').val());
+  localStorage.setItem('org.7kai.chrome.backlog.password', $('input[name=password]').val());
+  
+  showTargetOptionsArea();
+  
+  saveTargetOptions();
+  
+  $('#saveGeneralComplete').fadeOut('slow');
+}
+
+function saveTargetOptions() {
+  
+  $('#saveTargetComplete').show();
+  
+  var interval_sec = $('input[name=interval_sec]').val();
+  var due = $('input[name=due]:checked').val();
+  var status = $('input[name=status]:checked').map( function() {return $(this).val();}).get().join(':');
+  var project = $('input[name=project]:checked').map( function() {return $(this).val();}).get().join(':');
+  var assigner = $('input[name=assigner]:checked').map( function() {return $(this).val();}).get().join(':');
+  
+  if (parseInt(interval_sec) < 300) {
+    alert('interval min 300 sec.');
+    return ;
+  }
+  
+  if (project == '') {
+    project = $('input[name=project]').map( function() {return $(this).val();}).get().join(':');
+  }
+  
+  localStorage.setItem('org.7kai.chrome.backlog.interval_sec', interval_sec);
+  localStorage.setItem('org.7kai.chrome.backlog.due', due);
+  localStorage.setItem('org.7kai.chrome.backlog.status', status);
+  localStorage.setItem('org.7kai.chrome.backlog.project', project);
+  localStorage.setItem('org.7kai.chrome.backlog.assigner', assigner);
+  
+  updateBadgeCount();
+  
+  $('#saveTargetComplete').fadeOut('slow');
+}
+
+function showTargetOptionsArea() {
+  
+  var targetOptionsAreaProject     = '';
+  var targetOptionsAreaAssigner    = '';
+  var targetOptionsAreaCreatedUser = '';
+  
+  var backlog = getBacklog();
+  
+  var user;
+  
+  try {
+    user = backlog.getUser(backlog.ajaxBase.username);
+  } catch (e) {
+    alert('auth error.' + e);
+    return;
+  }
+  
+  if (user == null) {
+    alert('auth error.');
+    return;
+  }
+  
+  var projects = backlog.getProjects();
+  
+  $.each(projects, function(){
+    // alert(this.id + ':' + this.name);
+    targetOptionsAreaProject = targetOptionsAreaProject
+      + '<li><label><input type="checkbox" name="project" value="' + this.id + '" checked="checked" /> ' + $.escapeHTML(this.name) + '</label></li>';
+  });
+  
+  var users = backlog.getUsers(projects);
+  
+  $.each(users, function(){
+    // alert(this.id + ':' + this.name);
+    targetOptionsAreaAssigner = targetOptionsAreaAssigner
+      + '<li><label><input type="checkbox" name="assigner" value="' + this.id + '" /> ' + $.escapeHTML(this.name) + '</label></li>';
+  });
+  
+  //'  <li><label><input type="checkbox" name="project" value="" /> </label></li>'
+  var targetOptionsArea =
+      '<h3>Interval</h3>'
+    + '  <div><input type="text" name="interval_sec" value="300" size="3" /> sec (min: 300)</div>'
+    + '<h3>Badge Count (カウント対象)</h3>'
+    + '<ul>'
+    + '  <li><label><input type="radio" name="due" value="1" checked="checked" /> All (すべて)</label></li>'
+    + '  <li><label><input type="radio" name="due" value="2" /> Only Over Due and Today (期限切れ＋今日)</label></li>'
+    + '</ul>'
+    + '<h3>Status</h3>'
+    + '<ul>'
+    + '  <li><label><input type="checkbox" name="status" value="1" checked="checked" /> Open (未対応)</label></li>'
+    + '  <li><label><input type="checkbox" name="status" value="2" checked="checked" /> In Progress (処理中)</label></li>'
+    + '  <li><label><input type="checkbox" name="status" value="3" /> Resolved(処理済)</label></li>'
+    + '  <li><label><input type="checkbox" name="status" value="4" /> Closed (完了)</label></li>'
+    + '</ul>'
+    + '<h3>Project</h3>'
+    + '<ul>'
+    + targetOptionsAreaProject
+    + '</ul>'
+    + ''
+    + '<h3>Assigner （担当者）</h3>'
+    + '<ul>'
+    + targetOptionsAreaAssigner
+    + '</ul>';
+  
+  $('#target_options_area').html(targetOptionsArea);
+  
+  $('input[name=assigner]').val([user.id]);
+}
+</script>
+<style>
+body {
+}
+h1 {
+  font-size: 16px;
+  color: #0a3616;
+}
+h2 {
+  font-size: 14px;
+  color: #0a3616;
+}
+h3 {
+  color: #0a3616;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+li {
+  margin: 4px;
+}
+.optionsArea {
+  border: 1px dashed #A4B874;
+  margin: 10px;
+  padding: 20px 10px 20px 10px;
+}
+#saveGeneralComplete, #saveTargetComplete {
+  display: none;
+  background-color: #D5FFDF;
+  color: #006A1B;
+  font-size: 14px;
+  width: 260px;
+  text-align: center;
+  margin: auto;
+  padding: 10px;
+}
+</style>
+</head>
+
+<body onload="restoreOptions()">
+
+<div style="width: 400px; margin-top: 40px; margin-left: auto; margin-right: auto;">
+
+<form name="form1">
+
+<h1>Backlog Checker Options</h1>
+
+<div class="optionsArea"><!-- General Options -->
+
+<div style="padding-left: 20px;">
+<h2>General Options</h2>
+<div style="margin-top: 4px;">Space: https://<input type="text" name="space" value="" />.backlog.jp/</div>
+<div style="margin-top: 4px;">LoginId: <input type="text" name="username" value="" /></div>
+<div style="margin-top: 4px;">Password: <input type="password" name="password" value="" /></div>
+</div>
+
+<div style="margin-top: 8px; padding-left: 20px;">
+<div><input type="button" name="saveButton" value="Save" onclick="saveGeneralOptions()" /> <span id="saveGeneralComplete">Now saving...</span></div>
+</div>
+
+</div><!-- /General Options -->
+
+
+
+<div class="optionsArea"><!-- Target Options -->
+
+<div style="padding-left: 20px;">
+<h2>Target Options</h2>
+<div id="target_options_area">Please setting general options.</div>
+</div>
+
+<div style="margin-top: 20px; padding-left: 20px;">
+<div><input type="button" name="saveButton" value="Save" onclick="saveTargetOptions()" /> <span id="saveTargetComplete">Now saving...</span></div>
+</div>
+
+</div><!-- /Target Options -->
+
+</form>
+
+</div>
+
+</body>
+</html>
