@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Google Tasks Plus Options</title>
+<link rel="stylesheet" type="text/css" href="print.css" media="print">
+<link rel="stylesheet" type="text/css" href="reset.css" media="screen">
+<link rel="stylesheet" type="text/css" href="style.css" media="screen">
+<script type="text/javascript" src="jquery-1.4.2.min.js"></script>
+<script type="text/javascript" src="backlog.js"></script>
+<script type="text/javascript" src="main.js"></script>
+<script>
+function refresh() {
+  updateBadgeCount()
+  return false;
+}
+function openOptions() {
+  chrome.tabs.create({url: "options.html"});
+  return false;
+}
+function openBacklog() {
+  
+  var space = localStorage.getItem('org.7kai.chrome.backlog.space');
+  
+  if (space != null) {
+    findUrl = 'https://' + space + '.backlog.jp/';
+    openUrl = 'https://' + space + '.backlog.jp/MyPage.action';
+    
+    findTab(findUrl, function(tab) {
+      if (tab) {
+        // Try to reuse an existing Reader tab
+        chrome.tabs.update(tab.id, {selected: true});
+      } else {
+        chrome.tabs.create({url: openUrl});
+      }
+    });
+    
+  } else {
+    alert('Please Setting Options.');
+  }
+  
+  return false;
+}
+</script>
+<style>
+li {
+  margin: 6px;
+}
+</style>
+</head>
+<body>
+
+<div style="width: 200px;">
+<ul>
+<li><a href="javascript:refresh()">Count Refresh (カウント更新)</a>
+<li><a href='javascript:openOptions()'>Open Options (オプション)</a>
+<li><a href='javascript:openBacklog()'>Open Backlog (バックログを開く)</a>
+</ul>
+</div>
+
+</body>
+</html>
